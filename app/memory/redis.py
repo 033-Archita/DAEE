@@ -6,10 +6,9 @@ real Redis client wrapper with the same API used by the project code.
 
 from __future__ import annotations
 
+import importlib
 import re
 from typing import Any
-
-import redis
 
 
 class RedisConnectionError(ConnectionError):
@@ -35,6 +34,8 @@ class RedisRepository:
         return parsed.replace("redis://", "").replace("rediss://", "")
 
     def connect(self) -> None:
+        import redis
+
         try:
             self._client = redis.Redis.from_url(self._url, decode_responses=True)
             self._client.ping()
@@ -123,6 +124,12 @@ class RedisRepository:
         if self._client is None:
             raise RuntimeError("Redis is not connected. Call connect() first.")
         return getattr(self._client, name)
+
+
+def __getattr__(name: str) -> Any:
+    if name == "redis":
+        return importlib.import_module("redis")
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 __all__ = ["RedisConnectionError", "RedisRepository", "redis"]
