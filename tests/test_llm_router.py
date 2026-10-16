@@ -1,8 +1,18 @@
-from app.llm.base import ProviderUnavailableError, RateLimitError
+from unittest.mock import Mock
+
+from app.llm.base import LLMResponse, ProviderUnavailableError, RateLimitError
+from app.llm.openai_compatible import OpenAICompatibleProvider
 from app.llm.router import LLMRouter
 from app.memory.health import ProviderHealthRepository
 from app.memory.redis import RedisRepository
 from tests.fakes import FakeRedis
+
+
+def test_openai_compatible_provider_supports_structured_output() -> None:
+    provider = OpenAICompatibleProvider(name="groq", api_key="test", model="test-model", endpoint="https://example.test")
+    provider.generate = Mock(return_value=LLMResponse(text='{"topics": []}', provider="groq", model="test-model", usage={}))
+
+    assert provider.generate_structured("prompt", task="topic_generation") == {"topics": []}
 
 
 class FakeProvider:

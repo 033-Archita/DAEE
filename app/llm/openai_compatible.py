@@ -6,10 +6,10 @@ import json
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from app.llm.base import LLMResponse, ProviderUnavailableError, RateLimitError
+from app.llm.base import LLMProvider, LLMResponse, ProviderUnavailableError, RateLimitError
 
 
-class OpenAICompatibleProvider:
+class OpenAICompatibleProvider(LLMProvider):
     name: str
 
     def __init__(self, *, name: str, api_key: str | None, model: str, endpoint: str, extra_headers: dict[str, str] | None = None) -> None:

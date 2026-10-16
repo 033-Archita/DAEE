@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 
 from pymongo import MongoClient
 from pymongo.errors import ConfigurationError as PyMongoConfigurationError
+from pymongo.errors import DuplicateKeyError
 from pymongo.errors import PyMongoError
 
 
@@ -91,7 +92,32 @@ class MongoRepository:
         value = document.get("value")
         return value if isinstance(value, str) else json.dumps(value) if value is not None else None
 
-    def set(self, key: str, value: str, *, expires_in_seconds: int | None = None) -> bool:
+    def set(
+        self,
+        key: str,
+        value: str,
+        *,
+        expires_in_seconds: int | None = None,
+        nx: bool = False,
+        ex: int | None = None,
+    ) -> bool:
+        if ex is not None:
+            if expires_in_seconds is not None:
+                raise ValueError("Use either ex or expires_in_seconds, not both.")
+            expires_in_seconds = ex
+        if self._uses_legacy_client():
+            return bool(self._client.set(key, value, ex=expires_in_seconds, nx=nx))
+        if nx:
+            if self._read(key) is not None:
+                return False
+            payload: dict[str, Any] = {"_id": key, "value": value, "kind": "value"}
+            if expires_in_seconds is not None:
+                payload["expires_at"] = (datetime.now(timezone.utc) + timedelta(seconds=expires_in_seconds)).isoformat()
+            try:
+                self._collection.insert_one(payload)
+            except DuplicateKeyError:
+                return False
+            return True
         self._write_value(key, value, expires_in_seconds=expires_in_seconds)
         return True
 
