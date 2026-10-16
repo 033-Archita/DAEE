@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import datetime, timezone
 
 
@@ -17,6 +18,20 @@ class JsonFormatter(logging.Formatter):
         }
         if hasattr(record, "event"):
             payload["event"] = record.event
+        if record.exc_info:
+            exception = self.formatException(record.exc_info)
+            for name in (
+                "MONGO_URI",
+                "GROQ_API_KEY",
+                "MISTRAL_API_KEY",
+                "TAVILY_API_KEY",
+                "GMAIL_OAUTH_CLIENT_SECRET",
+                "GMAIL_REFRESH_TOKEN",
+            ):
+                secret = os.getenv(name)
+                if secret:
+                    exception = exception.replace(secret, "[REDACTED]")
+            payload["exception"] = exception
         return json.dumps(payload, ensure_ascii=False)
 
 

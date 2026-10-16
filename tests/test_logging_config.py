@@ -1,0 +1,22 @@
+import json
+import logging
+import sys
+
+from app.logging_config import JsonFormatter
+
+
+def test_json_formatter_includes_traceback_and_redacts_configured_secrets(monkeypatch) -> None:
+    secret = "test-provider-secret"
+    monkeypatch.setenv("GROQ_API_KEY", secret)
+    record = logging.LogRecord("test", logging.ERROR, __file__, 1, "workflow failed", (), None)
+    try:
+        raise RuntimeError(f"provider rejected {secret}")
+    except RuntimeError:
+        record.exc_info = sys.exc_info()
+
+    payload = json.loads(JsonFormatter().format(record))
+
+    assert payload["message"] == "workflow failed"
+    assert "RuntimeError" in payload["exception"]
+    assert secret not in payload["exception"]
+    assert "[REDACTED]" in payload["exception"]
