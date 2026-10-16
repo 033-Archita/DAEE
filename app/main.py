@@ -103,6 +103,7 @@ def main() -> int:
     try:
         result = DailyWorkflow(build_services(settings), timezone=settings.timezone).run()
     except Exception:
+        logger.exception("Daily workflow failed", extra={"event": "daily_workflow_failed"})
         return 1
     logger.info(f"Daily workflow result: {result.status}", extra={"event": "daily_workflow_result"})
     return 0
