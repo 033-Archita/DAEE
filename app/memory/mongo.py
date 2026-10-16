@@ -8,6 +8,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from pymongo import MongoClient
+from pymongo.errors import ConfigurationError as PyMongoConfigurationError
 from pymongo.errors import PyMongoError
 
 
@@ -41,7 +42,11 @@ class MongoRepository:
             self._collection = self._database["application_state"]
             self._client.admin.command("ping")
         except PyMongoError as error:
-            raise MongoConnectionError(f"Could not connect to MongoDB Atlas at {self.safe_location}.") from error
+            if isinstance(error, PyMongoConfigurationError) and "DNS query name does not exist" in str(error):
+                message = "The MongoDB Atlas SRV hostname in MONGO_URI could not be resolved. Copy the current connection string from Atlas > Connect > Drivers."
+            else:
+                message = f"Could not connect to MongoDB Atlas at {self.safe_location} ({type(error).__name__}). Check the Atlas network access list and database credentials."
+            raise MongoConnectionError(message) from error
 
     @property
     def client(self) -> "MongoRepository":
