@@ -67,11 +67,25 @@ def test_daily_run_reserves_exactly_three_and_is_idempotent():
 def test_daily_run_returns_partial_reservation_to_pool():
     redis_repository, topics = repositories()
     topics.add_to_pool([candidate(1), candidate(2)])
+    service = DailyRunService(redis_repository, topics)
 
     with pytest.raises(DailyRunError, match="At least three"):
-        DailyRunService(redis_repository, topics).start("2026-08-09")
+        service.start("2026-08-09")
 
     assert topics.pool_size() == 2
+    assert redis_repository.client.get(service._lock_key("2026-08-09")) is None
+
+
+def test_failed_empty_run_can_retry_after_topics_are_available():
+    redis_repository, topics = repositories()
+    service = DailyRunService(redis_repository, topics)
+    service.mark_failed("2026-08-09", "provider unavailable")
+    topics.add_to_pool([candidate(1), candidate(2), candidate(3)])
+
+    retried = service.start("2026-08-09")
+
+    assert retried.status == "started"
+    assert len(retried.topics) == 3
 
 
 def test_email_delivery_claim_prevents_duplicate_send_attempts():

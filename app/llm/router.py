@@ -27,12 +27,12 @@ class LLMRouter:
             attempted.append(provider_name)
             try:
                 result = provider.generate_structured(prompt, task=task)
-            except RateLimitError:
+            except RateLimitError as error:
                 self._health.record_failure(provider_name, "rate_limited", cooldown_seconds=300)
-                self._logger.warning("LLM provider rate limited", extra={"event": "provider_failure"})
-            except (ProviderUnavailableError, StructuredOutputError):
+                self._logger.warning("LLM provider rate limited", extra={"event": "provider_failure", "provider": provider_name, "reason": str(error)})
+            except (ProviderUnavailableError, StructuredOutputError) as error:
                 self._health.record_failure(provider_name, "unavailable", cooldown_seconds=60)
-                self._logger.warning("LLM provider unavailable", extra={"event": "provider_failure"})
+                self._logger.warning("LLM provider unavailable", extra={"event": "provider_failure", "provider": provider_name, "reason": str(error)})
             else:
                 self._health.record_success(provider_name)
                 return result
@@ -47,10 +47,12 @@ class LLMRouter:
             attempted.append(provider_name)
             try:
                 result = provider.generate(prompt, task=task)
-            except RateLimitError:
+            except RateLimitError as error:
                 self._health.record_failure(provider_name, "rate_limited", cooldown_seconds=300)
-            except ProviderUnavailableError:
+                self._logger.warning("LLM provider rate limited", extra={"event": "provider_failure", "provider": provider_name, "reason": str(error)})
+            except ProviderUnavailableError as error:
                 self._health.record_failure(provider_name, "unavailable", cooldown_seconds=60)
+                self._logger.warning("LLM provider unavailable", extra={"event": "provider_failure", "provider": provider_name, "reason": str(error)})
             else:
                 self._health.record_success(provider_name)
                 return result

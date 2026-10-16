@@ -20,3 +20,14 @@ def test_json_formatter_includes_traceback_and_redacts_configured_secrets(monkey
     assert "RuntimeError" in payload["exception"]
     assert secret not in payload["exception"]
     assert "[REDACTED]" in payload["exception"]
+
+
+def test_json_formatter_includes_safe_provider_failure_details() -> None:
+    record = logging.LogRecord("test", logging.WARNING, __file__, 1, "provider unavailable", (), None)
+    record.provider = "groq"
+    record.reason = "groq rejected the request (401)"
+
+    payload = json.loads(JsonFormatter().format(record))
+
+    assert payload["provider"] == "groq"
+    assert payload["reason"] == "groq rejected the request (401)"

@@ -43,19 +43,27 @@ class DailyRunService:
         key = self._key(date)
         existing = self._redis.client.hgetall(key)
         if existing:
-            return DailyRun(date=date, status=existing["status"], topics=[TopicCandidate.from_dict(item) for item in json.loads(existing["topics"])])
+            topics = [TopicCandidate.from_dict(item) for item in json.loads(existing.get("topics", "[]"))]
+            if existing.get("status") != "failed" or topics:
+                return DailyRun(date=date, status=existing["status"], topics=topics)
+            self._redis.delete(self._lock_key(date))
+            self._redis.delete(key)
         if not self._redis.client.set(self._lock_key(date), "1", nx=True, ex=60 * 60 * 48):
             existing = self._redis.client.hgetall(key)
             if existing:
-                return DailyRun(date=date, status=existing["status"], topics=[TopicCandidate.from_dict(item) for item in json.loads(existing["topics"])])
+                return DailyRun(date=date, status=existing["status"], topics=[TopicCandidate.from_dict(item) for item in json.loads(existing.get("topics", "[]"))])
             raise DailyRunError("A daily run is being initialized; retry shortly.")
-        reserved = self._topics.reserve_topics(3)
-        if len(reserved) != 3:
-            # Put back any partial reservation in its original order before failing.
+        reserved: list[TopicCandidate] = []
+        try:
+            reserved = self._topics.reserve_topics(3)
+            if len(reserved) != 3:
+                raise DailyRunError("At least three unused topics are required before starting a daily run.")
+            self._redis.client.hset(key, mapping={"status": "started", "topics": json.dumps([item.as_dict() for item in reserved])})
+        except Exception:
             if reserved:
                 self._redis.client.lpush(self._topics.pool_key, *(json.dumps(item.as_dict()) for item in reversed(reserved)))
-            raise DailyRunError("At least three unused topics are required before starting a daily run.")
-        self._redis.client.hset(key, mapping={"status": "started", "topics": json.dumps([item.as_dict() for item in reserved])})
+            self._redis.delete(self._lock_key(date))
+            raise
         return DailyRun(date=date, status="started", topics=reserved)
 
     def mark_completed(self, date: str) -> DailyRun:
@@ -86,8 +94,11 @@ class DailyRunService:
         self._redis.delete(self._delivery_lock_key(date))
 
     def mark_failed(self, date: str, reason: str) -> DailyRun:
-        run = self.start(date)
-        if run.status == "completed":
-            return run
-        self._redis.client.hset(self._key(date), mapping={"status": "failed", "failure_reason": reason[:500]})
-        return DailyRun(date=date, status="failed", topics=run.topics)
+        key = self._key(date)
+        state = self._redis.client.hgetall(key)
+        topics_json = state.get("topics", "[]")
+        topics = [TopicCandidate.from_dict(item) for item in json.loads(topics_json)]
+        if state.get("status") == "completed":
+            return DailyRun(date=date, status="completed", topics=topics)
+        self._redis.client.hset(key, mapping={"status": "failed", "topics": topics_json, "failure_reason": reason[:500]})
+        return DailyRun(date=date, status="failed", topics=topics)

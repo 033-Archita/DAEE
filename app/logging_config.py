@@ -18,6 +18,10 @@ class JsonFormatter(logging.Formatter):
         }
         if hasattr(record, "event"):
             payload["event"] = record.event
+        for name in ("provider", "reason"):
+            value = getattr(record, name, None)
+            if value is not None:
+                payload[name] = value
         if record.exc_info:
             exception = self.formatException(record.exc_info)
             for name in (
