@@ -41,10 +41,10 @@ def _positive_int(name: str, default: int) -> int:
 
 
 def _provider_order() -> tuple[str, ...]:
-    supported = {"groq", "mistral"}
-    order = tuple(item.strip().lower() for item in os.getenv("LLM_PROVIDER_ORDER", "groq,mistral").split(",") if item.strip())
+    supported = {"openrouter", "mistral"}
+    order = tuple(item.strip().lower() for item in os.getenv("LLM_PROVIDER_ORDER", "openrouter,mistral").split(",") if item.strip())
     if not order or len(order) != len(set(order)) or any(item not in supported for item in order):
-        raise ConfigurationError("LLM_PROVIDER_ORDER must be a unique comma-separated list of groq and/or mistral.")
+        raise ConfigurationError("LLM_PROVIDER_ORDER must be a unique comma-separated list of openrouter and/or mistral.")
     return order
 
 
@@ -59,9 +59,9 @@ class Settings:
     pool_size: int
     low_watermark: int
     llm_provider_order: tuple[str, ...]
-    groq_api_key: str | None
+    openrouter_api_key: str | None
     mistral_api_key: str | None
-    groq_model: str
+    openrouter_model: str
     mistral_model: str
     tavily_api_key: str | None
     tavily_max_results: int
@@ -110,9 +110,9 @@ class Settings:
             pool_size=pool_size,
             low_watermark=low_watermark,
             llm_provider_order=_provider_order(),
-            groq_api_key=os.getenv("GROQ_API_KEY") or None,
+            openrouter_api_key=os.getenv("OPENROUTER_API_KEY") or None,
             mistral_api_key=os.getenv("MISTRAL_API_KEY") or None,
-            groq_model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+            openrouter_model=os.getenv("OPENROUTER_MODEL", "openrouter/free"),
             mistral_model=os.getenv("MISTRAL_MODEL", "mistral-small-latest"),
             tavily_api_key=os.getenv("TAVILY_API_KEY") or None,
             tavily_max_results=_positive_int("TAVILY_MAX_RESULTS", 5),

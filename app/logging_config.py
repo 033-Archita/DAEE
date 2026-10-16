@@ -26,7 +26,7 @@ class JsonFormatter(logging.Formatter):
             exception = self.formatException(record.exc_info)
             for name in (
                 "MONGO_URI",
-                "GROQ_API_KEY",
+                "OPENROUTER_API_KEY",
                 "MISTRAL_API_KEY",
                 "TAVILY_API_KEY",
                 "GMAIL_OAUTH_CLIENT_SECRET",

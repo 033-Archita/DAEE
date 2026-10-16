@@ -46,7 +46,8 @@ MONGO_DATABASE=daily_curiosity
 APP_ENV=development
 LOG_LEVEL=INFO
 TIMEZONE=Asia/Kolkata
-GROQ_API_KEY=your-groq-key
+OPENROUTER_API_KEY=your-openrouter-key
+OPENROUTER_MODEL=openrouter/free
 MISTRAL_API_KEY=your-mistral-key
 TAVILY_API_KEY=your-tavily-key
 GMAIL_OAUTH_CLIENT_ID=your-google-client-id
@@ -66,7 +67,7 @@ Notes:
 The repository includes a scheduled GitHub Actions workflow that runs daily at 10:00 Asia/Kolkata and can also be started manually from the Actions tab. To enable actual delivery, open the GitHub repository's **Settings → Secrets and variables → Actions** and add these repository secrets:
 
 - `MONGO_URI`
-- `GROQ_API_KEY` and/or `MISTRAL_API_KEY` (at least one configured provider)
+- `OPENROUTER_API_KEY` and/or `MISTRAL_API_KEY` (at least one configured provider)
 - `TAVILY_API_KEY`
 - `GMAIL_OAUTH_CLIENT_ID`
 - `GMAIL_OAUTH_CLIENT_SECRET`
@@ -74,6 +75,8 @@ The repository includes a scheduled GitHub Actions workflow that runs daily at 1
 - `GMAIL_RECIPIENT`
 
 The Gmail refresh token must be authorized for the Gmail account used to send the email, and the recipient must be an address that account is allowed to send to. Never put secret values in workflow YAML, README files, or `.env.example`. After adding the secrets, use **Actions → Daily Curiosity → Run workflow** for the first delivery check; subsequent runs use the daily schedule.
+
+The default model is OpenRouter's `openrouter/free` router. Free models have shared rate limits and availability can vary; add OpenRouter credits or choose a paid model in `OPENROUTER_MODEL` if the free route is unavailable.
 
 ### 3) Validate the app
 
@@ -153,7 +156,7 @@ This means:
 
 The app can work with:
 
-- Groq for LLM generation
+- OpenRouter for primary LLM generation
 - Mistral for model fallback or alternate routing
 - Tavily for search/research
 - Gmail OAuth for sending the final email
