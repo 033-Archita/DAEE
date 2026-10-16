@@ -50,11 +50,14 @@ class MongoRepository:
 
     @property
     def client(self) -> "MongoRepository":
-        if self._client is not None and hasattr(self._client, "hgetall"):
+        if self._uses_legacy_client():
             return self._client
         if self._collection is None:
             raise RuntimeError("MongoDB is not connected. Call connect() first.")
         return self
+
+    def _uses_legacy_client(self) -> bool:
+        return self._client is not None and not isinstance(self._client, MongoClient)
 
     def _delegate_to_client(self, method_name: str, *args: Any, **kwargs: Any) -> Any:
         if self._client is not None and not hasattr(self._client, "_collection") and hasattr(self._client, method_name):
@@ -93,7 +96,7 @@ class MongoRepository:
         return True
 
     def delete(self, key: str) -> int:
-        if self._client is not None and not hasattr(self._client, "_collection"):
+        if self._uses_legacy_client():
             return int(self._client.delete(key))
         result = self._collection.delete_one({"_id": key})
         return int(result.deleted_count)
@@ -112,7 +115,7 @@ class MongoRepository:
         return True
 
     def hset(self, key: str, mapping: dict[str, Any]) -> int:
-        if self._client is not None and not hasattr(self._client, "_collection"):
+        if self._uses_legacy_client():
             return int(self._client.hset(key, mapping=mapping))
         document = self._read(key) or {"_id": key, "value": {}, "kind": "hash"}
         current = dict(document.get("value", {}))
@@ -134,7 +137,7 @@ class MongoRepository:
         return {str(k): str(v) for k, v in value.items()}
 
     def hincrby(self, key: str, field: str, amount: int = 1) -> int:
-        if self._client is not None and not hasattr(self._client, "_collection"):
+        if self._uses_legacy_client():
             return int(self._client.hincrby(key, field, amount))
         document = self._read(key) or {"_id": key, "value": {}, "kind": "hash"}
         current = dict(document.get("value", {}))
@@ -145,7 +148,7 @@ class MongoRepository:
         return next_value
 
     def expire(self, key: str, seconds: int) -> bool:
-        if self._client is not None and not hasattr(self._client, "_collection"):
+        if self._uses_legacy_client():
             return bool(self._client.expire(key, seconds))
         document = self._read(key)
         if document is None:
@@ -154,7 +157,7 @@ class MongoRepository:
         return True
 
     def llen(self, key: str) -> int:
-        if self._client is not None and not hasattr(self._client, "_collection"):
+        if self._uses_legacy_client():
             return int(self._client.llen(key))
         document = self._read(key)
         if document is None:
@@ -163,7 +166,7 @@ class MongoRepository:
         return len(value) if isinstance(value, list) else 0
 
     def lrange(self, key: str, start: int, end: int) -> list[str]:
-        if self._client is not None and not hasattr(self._client, "_collection"):
+        if self._uses_legacy_client():
             return list(self._client.lrange(key, start, end))
         document = self._read(key)
         items = document.get("value", []) if document else []
@@ -174,7 +177,7 @@ class MongoRepository:
         return [str(item) for item in items[start : end + 1]]
 
     def rpush(self, key: str, *values: str) -> int:
-        if self._client is not None and not hasattr(self._client, "_collection"):
+        if self._uses_legacy_client():
             return int(self._client.rpush(key, *values))
         document = self._read(key) or {"_id": key, "value": [], "kind": "list"}
         current = list(document.get("value", []))
@@ -183,7 +186,7 @@ class MongoRepository:
         return len(current)
 
     def lpush(self, key: str, *values: str) -> int:
-        if self._client is not None and not hasattr(self._client, "_collection"):
+        if self._uses_legacy_client():
             return int(self._client.lpush(key, *values))
         document = self._read(key) or {"_id": key, "value": [], "kind": "list"}
         current = list(document.get("value", []))
@@ -192,7 +195,7 @@ class MongoRepository:
         return len(current)
 
     def lpop(self, key: str, count: int | None = None) -> str | list[str] | None:
-        if self._client is not None and not hasattr(self._client, "_collection"):
+        if self._uses_legacy_client():
             return self._client.lpop(key, count) if count is not None else self._client.lpop(key)
         document = self._read(key)
         if document is None:
@@ -210,7 +213,7 @@ class MongoRepository:
         return [str(item) for item in result]
 
     def smembers(self, key: str) -> set[str]:
-        if self._client is not None and not hasattr(self._client, "_collection"):
+        if self._uses_legacy_client():
             return set(self._client.smembers(key))
         document = self._read(key)
         if document is None:
@@ -221,7 +224,7 @@ class MongoRepository:
         return {str(item) for item in value}
 
     def sadd(self, key: str, *values: str) -> int:
-        if self._client is not None and not hasattr(self._client, "_collection"):
+        if self._uses_legacy_client():
             return int(self._client.sadd(key, *values))
         document = self._read(key) or {"_id": key, "value": set(), "kind": "set"}
         current = set(document.get("value", set()))
