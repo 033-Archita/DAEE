@@ -78,6 +78,33 @@ def test_cloudflare_structured_output_accepts_markdown_fenced_json(monkeypatch) 
     assert provider.generate_structured("Return an object", task="research_synthesis") == {"overview": "A brief idea"}
 
 
+def test_cloudflare_retries_malformed_structured_output_once(monkeypatch) -> None:
+    import json
+
+    class Response:
+        def __init__(self, body): self.body = body
+        def __enter__(self): return self
+        def __exit__(self, *args): return None
+        def read(self): return self.body
+
+    responses = [
+        Response(b'{"success":true,"result":{"response":"{\\"overview\\": \\"cut off"}}'),
+        Response(b'{"success":true,"result":{"response":"{\\"overview\\":\\"complete\\"}"}}'),
+    ]
+    request_payloads = []
+
+    def fake_urlopen(request, timeout):
+        request_payloads.append(json.loads(request.data))
+        return responses.pop(0)
+
+    monkeypatch.setattr("app.llm.cloudflare.urlopen", fake_urlopen)
+    provider = CloudflareWorkersAIProvider(account_id="account", api_token="token", model="@cf/meta/llama-3.1-8b-instruct")
+
+    assert provider.generate_structured("Return an object", task="research_synthesis") == {"overview": "complete"}
+    assert len(request_payloads) == 2
+    assert "previous response was not valid JSON" in request_payloads[1]["messages"][0]["content"]
+
+
 def test_cloudflare_provider_rejects_unsuccessful_response(monkeypatch) -> None:
     class Response:
         def __enter__(self): return self

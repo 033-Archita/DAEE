@@ -33,22 +33,39 @@ class CloudflareWorkersAIProvider(LLMProvider):
     def generate_structured(self, prompt: str, *, task: str) -> dict[str, Any]:
         response = self._request(prompt, task=task, json_mode=True)
         try:
-            result = json.loads(response.text)
-        except json.JSONDecodeError:
+            return self._parse_structured_response(response.text)
+        except StructuredOutputError:
+            retry_prompt = (
+                f"{prompt}\n\nYour previous response was not valid JSON. Retry once. "
+                "Return exactly one complete JSON object, with no Markdown or surrounding prose. "
+                "Escape quotes and newlines inside string values."
+            )
+        retry_response = self._request(retry_prompt, task=task, json_mode=True)
+        return self._parse_structured_response(retry_response.text)
+
+    @staticmethod
+    def _parse_structured_response(text: str) -> dict[str, Any]:
+        try:
+            result = json.loads(text)
+        except json.JSONDecodeError as initial_error:
             decoder = json.JSONDecoder()
             result = None
-            for index, character in enumerate(response.text):
+            parse_error = initial_error
+            for index, character in enumerate(text):
                 if character == "{":
                     try:
-                        candidate, _ = decoder.raw_decode(response.text[index:])
-                    except json.JSONDecodeError:
+                        candidate, _ = decoder.raw_decode(text[index:])
+                    except json.JSONDecodeError as error:
+                        parse_error = error
                         continue
                     if isinstance(candidate, dict):
                         result = candidate
                         break
             if result is None:
-                preview = " ".join(response.text.split())[:160]
-                raise StructuredOutputError(f"Cloudflare Workers AI returned invalid structured JSON: {preview!r}.")
+                raise StructuredOutputError(
+                    f"Cloudflare Workers AI returned invalid structured JSON "
+                    f"({parse_error.msg} at {parse_error.pos}/{len(text)} characters)."
+                ) from parse_error
         if not isinstance(result, dict):
             raise StructuredOutputError("Cloudflare Workers AI returned a non-object structured response.")
         return result
