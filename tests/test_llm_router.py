@@ -59,6 +59,8 @@ def test_cloudflare_provider_requests_json_mode_for_structured_generation(monkey
     provider = CloudflareWorkersAIProvider(account_id="account", api_token="token", model="@cf/meta/llama-3.1-8b-instruct")
 
     assert provider.generate_structured("Return a topic object", task="topic_generation") == {"topics": []}
+    assert captured["payload"]["messages"] == [{"role": "user", "content": "Return a topic object"}]
+    assert "prompt" not in captured["payload"]
     assert captured["payload"]["response_format"] == {"type": "json_object"}
 
 

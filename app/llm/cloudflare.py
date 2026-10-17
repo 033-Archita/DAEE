@@ -43,9 +43,14 @@ class CloudflareWorkersAIProvider(LLMProvider):
     def _request(self, prompt: str, *, task: str, json_mode: bool = False) -> LLMResponse:
         if not self.is_configured:
             raise ProviderUnavailableError("Cloudflare Workers AI is not configured.")
-        request_payload: dict[str, object] = {"prompt": prompt}
+        request_payload: dict[str, object]
         if json_mode:
-            request_payload["response_format"] = {"type": "json_object"}
+            request_payload = {
+                "messages": [{"role": "user", "content": prompt}],
+                "response_format": {"type": "json_object"},
+            }
+        else:
+            request_payload = {"prompt": prompt}
         request = Request(
             self.endpoint,
             data=json.dumps(request_payload).encode(),
