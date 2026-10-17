@@ -61,6 +61,8 @@ class CloudflareWorkersAIProvider(LLMProvider):
             request_payload = {
                 "messages": [{"role": "user", "content": prompt}],
                 "response_format": {"type": "json_object"},
+                "max_tokens": 2048,
+                "temperature": 0.2,
             }
         else:
             request_payload = {"prompt": prompt}

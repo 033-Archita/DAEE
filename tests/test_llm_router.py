@@ -62,6 +62,8 @@ def test_cloudflare_provider_requests_json_mode_for_structured_generation(monkey
     assert captured["payload"]["messages"] == [{"role": "user", "content": "Return a topic object"}]
     assert "prompt" not in captured["payload"]
     assert captured["payload"]["response_format"] == {"type": "json_object"}
+    assert captured["payload"]["max_tokens"] == 2048
+    assert captured["payload"]["temperature"] == 0.2
 
 
 def test_cloudflare_structured_output_accepts_markdown_fenced_json(monkeypatch) -> None:
