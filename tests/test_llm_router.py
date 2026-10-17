@@ -64,6 +64,18 @@ def test_cloudflare_provider_requests_json_mode_for_structured_generation(monkey
     assert captured["payload"]["response_format"] == {"type": "json_object"}
 
 
+def test_cloudflare_structured_output_accepts_markdown_fenced_json(monkeypatch) -> None:
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): return None
+        def read(self): return b'{"success":true,"result":{"response":"Here is the result:\\n```json\\n{\\\"overview\\\":\\\"A brief idea\\\"}\\n```"}}'
+
+    monkeypatch.setattr("app.llm.cloudflare.urlopen", lambda request, timeout: Response())
+    provider = CloudflareWorkersAIProvider(account_id="account", api_token="token", model="@cf/meta/llama-3.1-8b-instruct")
+
+    assert provider.generate_structured("Return an object", task="research_synthesis") == {"overview": "A brief idea"}
+
+
 def test_cloudflare_provider_rejects_unsuccessful_response(monkeypatch) -> None:
     class Response:
         def __enter__(self): return self

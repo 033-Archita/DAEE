@@ -34,8 +34,21 @@ class CloudflareWorkersAIProvider(LLMProvider):
         response = self._request(prompt, task=task, json_mode=True)
         try:
             result = json.loads(response.text)
-        except json.JSONDecodeError as error:
-            raise StructuredOutputError("Cloudflare Workers AI returned invalid structured JSON.") from error
+        except json.JSONDecodeError:
+            decoder = json.JSONDecoder()
+            result = None
+            for index, character in enumerate(response.text):
+                if character == "{":
+                    try:
+                        candidate, _ = decoder.raw_decode(response.text[index:])
+                    except json.JSONDecodeError:
+                        continue
+                    if isinstance(candidate, dict):
+                        result = candidate
+                        break
+            if result is None:
+                preview = " ".join(response.text.split())[:160]
+                raise StructuredOutputError(f"Cloudflare Workers AI returned invalid structured JSON: {preview!r}.")
         if not isinstance(result, dict):
             raise StructuredOutputError("Cloudflare Workers AI returned a non-object structured response.")
         return result
