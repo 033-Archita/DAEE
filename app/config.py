@@ -41,10 +41,10 @@ def _positive_int(name: str, default: int) -> int:
 
 
 def _provider_order() -> tuple[str, ...]:
-    supported = {"openrouter", "mistral"}
-    order = tuple(item.strip().lower() for item in os.getenv("LLM_PROVIDER_ORDER", "openrouter,mistral").split(",") if item.strip())
+    supported = {"cloudflare", "openrouter", "mistral"}
+    order = tuple(item.strip().lower() for item in os.getenv("LLM_PROVIDER_ORDER", "cloudflare,openrouter,mistral").split(",") if item.strip())
     if not order or len(order) != len(set(order)) or any(item not in supported for item in order):
-        raise ConfigurationError("LLM_PROVIDER_ORDER must be a unique comma-separated list of openrouter and/or mistral.")
+        raise ConfigurationError("LLM_PROVIDER_ORDER must be a unique comma-separated list of cloudflare, openrouter, and/or mistral.")
     return order
 
 
@@ -59,6 +59,9 @@ class Settings:
     pool_size: int
     low_watermark: int
     llm_provider_order: tuple[str, ...]
+    cloudflare_account_id: str | None
+    cloudflare_api_token: str | None
+    cloudflare_model: str
     openrouter_api_key: str | None
     mistral_api_key: str | None
     openrouter_model: str
@@ -110,6 +113,9 @@ class Settings:
             pool_size=pool_size,
             low_watermark=low_watermark,
             llm_provider_order=_provider_order(),
+            cloudflare_account_id=os.getenv("CLOUDFLARE_ACCOUNT_ID") or None,
+            cloudflare_api_token=os.getenv("CLOUDFLARE_API_TOKEN") or None,
+            cloudflare_model=os.getenv("CLOUDFLARE_MODEL", "@cf/meta/llama-3.1-8b-instruct"),
             openrouter_api_key=os.getenv("OPENROUTER_API_KEY") or None,
             mistral_api_key=os.getenv("MISTRAL_API_KEY") or None,
             openrouter_model=os.getenv("OPENROUTER_MODEL", "openrouter/free"),

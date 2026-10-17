@@ -10,7 +10,7 @@ from app.news.researcher import NewsResearcher
 from app.research.researcher import TopicResearcher
 from app.research.search import TavilySearchProvider
 from app.story.generator import StoryGenerator
-from app.llm.providers import mistral, openrouter
+from app.llm.providers import cloudflare, mistral, openrouter
 from app.llm.router import LLMRouter
 from app.memory.health import ProviderHealthRepository
 from app.memory.mongo import MongoRepository
@@ -37,6 +37,7 @@ def build_services(settings: Settings) -> ApplicationServices:
     redis_repository = MongoRepository(settings.mongo_uri, settings.mongo_database)
     redis_repository.connect()
     providers = {
+        "cloudflare": cloudflare(settings.cloudflare_account_id, settings.cloudflare_api_token, settings.cloudflare_model),
         "openrouter": openrouter(settings.openrouter_api_key, settings.openrouter_model),
         "mistral": mistral(settings.mistral_api_key, settings.mistral_model),
     }

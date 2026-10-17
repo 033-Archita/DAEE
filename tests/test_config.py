@@ -4,7 +4,7 @@ from app.config import ConfigurationError, Settings
 
 
 def clear_settings_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("REDIS_URL", "APP_ENV", "LOG_LEVEL", "TIMEZONE", "POOL_SIZE", "LOW_WATERMARK", "LLM_PROVIDER_ORDER", "OPENROUTER_API_KEY", "OPENROUTER_MODEL", "MISTRAL_API_KEY", "MISTRAL_MODEL"):
+    for name in ("REDIS_URL", "APP_ENV", "LOG_LEVEL", "TIMEZONE", "POOL_SIZE", "LOW_WATERMARK", "LLM_PROVIDER_ORDER", "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_MODEL", "OPENROUTER_API_KEY", "OPENROUTER_MODEL", "MISTRAL_API_KEY", "MISTRAL_MODEL"):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -18,7 +18,8 @@ def test_settings_load_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.timezone == "Asia/Kolkata"
     assert settings.pool_size == 50
     assert settings.low_watermark == 15
-    assert settings.llm_provider_order == ("openrouter", "mistral")
+    assert settings.llm_provider_order == ("cloudflare", "openrouter", "mistral")
+    assert settings.cloudflare_model == "@cf/meta/llama-3.1-8b-instruct"
     assert settings.openrouter_model == "openrouter/free"
 
 

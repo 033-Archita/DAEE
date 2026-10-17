@@ -27,6 +27,7 @@ class JsonFormatter(logging.Formatter):
             for name in (
                 "MONGO_URI",
                 "OPENROUTER_API_KEY",
+                "CLOUDFLARE_API_TOKEN",
                 "MISTRAL_API_KEY",
                 "TAVILY_API_KEY",
                 "GMAIL_OAUTH_CLIENT_SECRET",

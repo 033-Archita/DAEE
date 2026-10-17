@@ -67,7 +67,8 @@ Notes:
 The repository includes a scheduled GitHub Actions workflow that runs daily at 10:00 Asia/Kolkata and can also be started manually from the Actions tab. To enable actual delivery, open the GitHub repository's **Settings → Secrets and variables → Actions** and add these repository secrets:
 
 - `MONGO_URI`
-- `OPENROUTER_API_KEY` and/or `MISTRAL_API_KEY` (at least one configured provider)
+- `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`
+- `OPENROUTER_API_KEY` and/or `MISTRAL_API_KEY` as fallbacks
 - `TAVILY_API_KEY`
 - `GMAIL_OAUTH_CLIENT_ID`
 - `GMAIL_OAUTH_CLIENT_SECRET`
@@ -75,6 +76,8 @@ The repository includes a scheduled GitHub Actions workflow that runs daily at 1
 - `GMAIL_RECIPIENT`
 
 The Gmail refresh token must be authorized for the Gmail account used to send the email, and the recipient must be an address that account is allowed to send to. Never put secret values in workflow YAML, README files, or `.env.example`. After adding the secrets, use **Actions → Daily Curiosity → Run workflow** for the first delivery check; subsequent runs use the daily schedule.
+
+The workflow tests Cloudflare Workers AI first using `@cf/meta/llama-3.1-8b-instruct`, then runs the newsletter with Cloudflare first in the LLM fallback order. The standalone API smoke test is non-blocking so OpenRouter and Mistral can still serve the newsletter if Cloudflare is unavailable.
 
 The default model is OpenRouter's `openrouter/free` router. Free models have shared rate limits and availability can vary; add OpenRouter credits or choose a paid model in `OPENROUTER_MODEL` if the free route is unavailable.
 
