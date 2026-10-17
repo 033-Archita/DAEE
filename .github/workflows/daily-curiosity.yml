@@ -25,7 +25,7 @@ jobs:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       OPENROUTER_MODEL: openrouter/free
       MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-      LLM_PROVIDER_ORDER: openrouter,mistral
+      LLM_PROVIDER_ORDER: cloudflare,openrouter,mistral
       TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
       GMAIL_OAUTH_CLIENT_ID: ${{ secrets.GMAIL_OAUTH_CLIENT_ID }}
       GMAIL_OAUTH_CLIENT_SECRET: ${{ secrets.GMAIL_OAUTH_CLIENT_SECRET }}
