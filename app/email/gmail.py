@@ -13,6 +13,20 @@ class GmailError(RuntimeError):
     """Raised when Gmail OAuth or message delivery fails."""
 
 
+def _http_error_reason(error: HTTPError) -> str:
+    try:
+        payload = json.loads(error.read().decode())
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return f"HTTP {error.code}"
+    if isinstance(payload, dict):
+        code = payload.get("error")
+        description = payload.get("error_description")
+        details = ": ".join(str(part) for part in (code, description) if part)
+        if details:
+            return f"HTTP {error.code} ({details[:300]})"
+    return f"HTTP {error.code}"
+
+
 class GmailSender:
     token_endpoint = "https://oauth2.googleapis.com/token"
     send_endpoint = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
@@ -33,7 +47,9 @@ class GmailSender:
         try:
             with urlopen(request, timeout=30) as response:
                 token = json.loads(response.read().decode())["access_token"]
-        except (HTTPError, URLError, KeyError, json.JSONDecodeError, TimeoutError) as error:
+        except HTTPError as error:
+            raise GmailError(f"Could not obtain a Gmail access token: {_http_error_reason(error)}.") from error
+        except (URLError, KeyError, json.JSONDecodeError, TimeoutError) as error:
             raise GmailError("Could not obtain a Gmail access token.") from error
         return token
 
@@ -49,5 +65,7 @@ class GmailSender:
         try:
             with urlopen(request, timeout=45) as response:
                 return str(json.loads(response.read().decode())["id"])
-        except (HTTPError, URLError, KeyError, json.JSONDecodeError, TimeoutError) as error:
+        except HTTPError as error:
+            raise GmailError(f"Gmail could not send the daily email: {_http_error_reason(error)}.") from error
+        except (URLError, KeyError, json.JSONDecodeError, TimeoutError) as error:
             raise GmailError("Gmail could not send the daily email.") from error

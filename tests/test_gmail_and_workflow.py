@@ -1,9 +1,13 @@
 import json
 from datetime import UTC, datetime
+from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import patch
+from urllib.error import HTTPError
 
-from app.email.gmail import GmailSender
+import pytest
+
+from app.email.gmail import GmailError, GmailSender
 from app.llm.base import LLMResponse
 from app.orchestration.workflow import DailyWorkflow
 from app.research.models import Source
@@ -24,6 +28,18 @@ def test_gmail_sender_refreshes_token_and_sends_html():
         assert sender.send_html(subject="Test", html="<h1>Hello</h1>", message_id="<test@example.com>") == "gmail-id"
     assert urlopen.call_count == 2
     assert "Bearer token" in urlopen.call_args_list[1].args[0].headers["Authorization"]
+
+
+def test_gmail_token_error_reports_google_code_without_credentials():
+    sender = GmailSender(client_id="client", client_secret="secret-value", refresh_token="refresh-value", recipient="me@example.com")
+    error = HTTPError("https://oauth2.googleapis.com/token", 400, "Bad Request", {}, BytesIO(b'{"error":"invalid_grant","error_description":"Token has been expired or revoked"}'))
+
+    with patch("app.email.gmail.urlopen", side_effect=error):
+        with pytest.raises(GmailError, match="invalid_grant") as raised:
+            sender.send_html(subject="Test", html="<p>Hello</p>", message_id="<test@example.com>")
+
+    assert "secret-value" not in str(raised.value)
+    assert "refresh-value" not in str(raised.value)
 
 
 class FakeDailyRuns:
