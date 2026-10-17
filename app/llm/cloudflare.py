@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 import os
 import sys
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from app.config import load_dotenv
-from app.llm.base import LLMProvider, LLMResponse, ProviderUnavailableError, RateLimitError
+from app.llm.base import LLMProvider, LLMResponse, ProviderUnavailableError, RateLimitError, StructuredOutputError
 
 
 class CloudflareWorkersAIProvider(LLMProvider):
@@ -27,11 +28,27 @@ class CloudflareWorkersAIProvider(LLMProvider):
         return f"https://api.cloudflare.com/client/v4/accounts/{self._account_id}/ai/run/{self._model}"
 
     def generate(self, prompt: str, *, task: str) -> LLMResponse:
+        return self._request(prompt, task=task)
+
+    def generate_structured(self, prompt: str, *, task: str) -> dict[str, Any]:
+        response = self._request(prompt, task=task, json_mode=True)
+        try:
+            result = json.loads(response.text)
+        except json.JSONDecodeError as error:
+            raise StructuredOutputError("Cloudflare Workers AI returned invalid structured JSON.") from error
+        if not isinstance(result, dict):
+            raise StructuredOutputError("Cloudflare Workers AI returned a non-object structured response.")
+        return result
+
+    def _request(self, prompt: str, *, task: str, json_mode: bool = False) -> LLMResponse:
         if not self.is_configured:
             raise ProviderUnavailableError("Cloudflare Workers AI is not configured.")
+        request_payload: dict[str, object] = {"prompt": prompt}
+        if json_mode:
+            request_payload["response_format"] = {"type": "json_object"}
         request = Request(
             self.endpoint,
-            data=json.dumps({"prompt": prompt}).encode(),
+            data=json.dumps(request_payload).encode(),
             headers={
                 "Authorization": f"Bearer {self._api_token}",
                 "Content-Type": "application/json",
@@ -61,6 +78,8 @@ class CloudflareWorkersAIProvider(LLMProvider):
             text = payload["result"]["response"]
         except (KeyError, TypeError) as error:
             raise ProviderUnavailableError("Cloudflare Workers AI returned an invalid response.") from error
+        if isinstance(text, (dict, list)):
+            text = json.dumps(text)
         if not isinstance(text, str) or not text.strip():
             raise ProviderUnavailableError("Cloudflare Workers AI returned an empty response.")
         return LLMResponse(text=text, provider=self.name, model=self._model, usage={})

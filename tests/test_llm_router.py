@@ -42,6 +42,26 @@ def test_cloudflare_provider_parses_workers_ai_response(monkeypatch) -> None:
     assert response.provider == "cloudflare"
 
 
+def test_cloudflare_provider_requests_json_mode_for_structured_generation(monkeypatch) -> None:
+    import json
+
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): return None
+        def read(self): return b'{"success":true,"result":{"response":"{\\"topics\\": []}"}}'
+
+    captured = {}
+    def fake_urlopen(request, timeout):
+        captured["payload"] = json.loads(request.data)
+        return Response()
+
+    monkeypatch.setattr("app.llm.cloudflare.urlopen", fake_urlopen)
+    provider = CloudflareWorkersAIProvider(account_id="account", api_token="token", model="@cf/meta/llama-3.1-8b-instruct")
+
+    assert provider.generate_structured("Return a topic object", task="topic_generation") == {"topics": []}
+    assert captured["payload"]["response_format"] == {"type": "json_object"}
+
+
 def test_cloudflare_provider_rejects_unsuccessful_response(monkeypatch) -> None:
     class Response:
         def __enter__(self): return self
